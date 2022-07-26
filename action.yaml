@@ -1,0 +1,63 @@
+name: 'Push To Helm Repo'
+description: 'Push To Helm Repo'
+inputs:
+  charts_dir:
+    description: 'Charts Directory'
+    required: true
+  version:
+    description: 'Version'
+    required: true
+  aws_access_key_id:
+    description: 'AWS Access Key ID'
+    required: true
+  aws_secret_access_key:
+    description: 'AWS Secret Access Key'
+    required: true
+  aws_bucket_name:
+    description: 'AWS Bucket for Helm Repo'
+    required: true
+  aws_region:
+    description: 'AWS Region'
+    required: false
+    default: 'us-west-2'
+
+outputs:
+  result:
+    description: 'Result'
+    value: '{}'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install helm
+      shell: bash
+      run: |
+        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        chmod +x get_helm.sh
+        ./get_helm.sh
+
+    - name: Update helm packages
+      shell: bash
+      working-directory: ${{ inputs.charts_dir }}
+      run: |
+        appVersion=$(egrep "^appVersion" Chart.yaml | sed -r 's|^appVersion:[[:space:]]([0-9]+.[0-9]+.[0-9]+)$|\1|g')
+        version=${{ inputs.version }}
+        if [ "$appVersion" != "${version##*/}" ]; then
+          echo "Need update appVersion for Chart.yaml"
+          exit 1
+        fi
+        helm package .
+
+    - name: Upload to AWS
+      shell: bash
+      working-directory: ${{ inputs.charts_dir }}
+      run: |
+        mkdir -p /tmp/helm-repo
+        aws configure set region ${{ inputs.aws_region }}
+        aws configure set aws_access_key_id ${{ inputs.aws_access_key_id }}
+        aws configure set aws_secret_access_key ${{ inputs.aws_secret_access_key }}
+        aws s3 sync s3://${{inputs.aws_bucket_name}}/charts/ /tmp/helm-repo/
+        mv *.tgz /tmp/helm-repo
+        cd /tmp/helm-repo
+        helm repo index .
+        aws s3 sync . s3://${{inputs.aws_bucket_name}}/charts/
