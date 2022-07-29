@@ -11,5 +11,5 @@
         aws_access_key_id: ${{ secrets.aws_access_key_id }}
         aws_secret_access_key: ${{ secrets.aws_secret_access_key }}
         aws_region: ${{ secrets.aws_region }}
-        aws_bucket: ${{ secrets.aws_bucket_name }}
+        aws_bucket_name: ${{ secrets.aws_bucket_name }}
 ```
