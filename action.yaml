@@ -46,7 +46,7 @@ runs:
           echo "Need update appVersion for Chart.yaml"
           exit 1
         fi
-        helm dependency build
+        helm dependency update
         helm package .
 
     - name: Upload to AWS
